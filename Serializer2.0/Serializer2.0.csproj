@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Serializer2._0</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="SerializerTests\**" />
+    <Content Remove="SerializerTests\**" />
+    <EmbeddedResource Remove="SerializerTests\**" />
+    <None Remove="SerializerTests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>
