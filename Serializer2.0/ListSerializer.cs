@@ -63,12 +63,11 @@ public class ListSerializer : IListSerializer
     {
         if (string.IsNullOrEmpty(serializedList))
             throw new ArgumentException("Serialized list cannot be null or empty.");
-
-        var serializedNodes = serializedList.Split(';');
-
         
         var resultList = new List<SerializedNode>();
         var nodeMap = new Dictionary<Guid, ListNode>();
+
+        var serializedNodes = serializedList.Split(';');
 
         try
         {
@@ -79,7 +78,6 @@ public class ListSerializer : IListSerializer
         }
         catch (Exception)
         {
-
             throw new ArgumentException("Invalid serialized list data format.");
         }
 

@@ -27,30 +27,7 @@ namespace UnitTests
             var deepCopy = await serializer.DeepCopy(node1);
 
             // Assert
-            Assert.Equal(node1.Data, deepCopy.Data);
-            Assert.Equal(node1.Next.Data, deepCopy.Next.Data);
-        }
-
-        [Fact]
-        public async Task SerializeDeserialize_ShouldPreserveListStructure()
-        {
-            // Arrange
-            var originalList = new ListNode { Data = "A" };
-            originalList.Next = new ListNode { Data = "B" };
-            originalList.Random = originalList.Next;
-
-            var serializer = new ListSerializer();
-            using (var stream = new MemoryStream())
-            {
-                // Act
-                await serializer.Serialize(originalList, stream);
-                stream.Seek(0, SeekOrigin.Begin);
-                var deserializedList = await serializer.Deserialize(stream);
-
-                // Assert
-                Assert.Equal(originalList.Data, deserializedList.Data);
-                Assert.Equal(originalList.Next.Data, deserializedList.Next.Data);
-            }
+            AssertLinkedNodesEqual(node1, deepCopy);
         }
 
         [Fact]
@@ -66,6 +43,45 @@ namespace UnitTests
                 stream.Seek(0, SeekOrigin.Begin);
                 // Assert
                 await Assert.ThrowsAsync<ArgumentException>(() => serializer.Deserialize(stream));
+            }
+        }
+
+        [Fact]
+        public async Task TestSerializeDeserializeSingleNode()
+        {
+            var node = new ListNode { Data = "Node 1" };
+            var serializer = new ListSerializer();
+
+            using (var memoryStream = new MemoryStream())
+            {
+                await serializer.Serialize(node, memoryStream);
+                memoryStream.Seek(0, SeekOrigin.Begin);
+                var deserializedNode = await serializer.Deserialize(memoryStream);
+
+                AssertLinkedNodesEqual(node, deserializedNode);
+            }
+        }
+
+        private void AssertLinkedNodesEqual(ListNode expected, ListNode actual)
+        {
+            var expectedNodes = new List<ListNode>();
+            var actualNodes = new List<ListNode>();
+
+            while (expected != null && actual != null)
+            {
+                expectedNodes.Add(expected);
+                actualNodes.Add(actual);
+                Assert.Equal(expected.Data, actual.Data);
+                expected = expected.Next;
+                actual = actual.Next;
+            }
+
+            Assert.Equal(expected, actual);
+
+            for (int i = 0; i < expectedNodes.Count; i++)
+            {
+                Assert.Equal(expectedNodes[i].Previous?.Data, actualNodes[i].Previous?.Data);
+                Assert.Equal(expectedNodes[i].Next?.Data, actualNodes[i].Next?.Data);
             }
         }
     }
