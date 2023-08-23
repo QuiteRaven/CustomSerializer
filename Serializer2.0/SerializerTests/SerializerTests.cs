@@ -14,7 +14,6 @@ namespace UnitTests
 
             node1.Next = node2;
             node2.Next = node3;
-            node2.Next = node3;
             node2.Previous = node1;
             node3.Previous = node2;
             node1.Random = node3;

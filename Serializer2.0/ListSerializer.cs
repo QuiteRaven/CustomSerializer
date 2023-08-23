@@ -56,25 +56,21 @@ public class ListSerializer : IListSerializer
             serializedNodes.Add(JsonConvert.SerializeObject(serializedNode));
             cycleNode = cycleNode.Next;
         }
-        return string.Join(";", serializedNodes);
+
+        return "[" + string.Join(",", serializedNodes) + "]" ;
     }
 
     private ListNode DeserializeList(string serializedList)
     {
-        if (string.IsNullOrEmpty(serializedList))
+        if (serializedList == "[]")
             throw new ArgumentException("Serialized list cannot be null or empty.");
-        
+
         var resultList = new List<SerializedNode>();
         var nodeMap = new Dictionary<Guid, ListNode>();
 
-        var serializedNodes = serializedList.Split(';');
-
         try
         {
-            foreach (var serializedNode in serializedNodes)
-            {
-                resultList.Add(JsonConvert.DeserializeObject<SerializedNode>(serializedNode));
-            }
+            resultList = JsonConvert.DeserializeObject<List<SerializedNode>>(serializedList);
         }
         catch (Exception)
         {
