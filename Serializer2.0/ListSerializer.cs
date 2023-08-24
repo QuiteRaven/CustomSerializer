@@ -7,98 +7,96 @@ public class ListSerializer : IListSerializer
     public async Task Serialize(ListNode head, Stream s)
     {
         var writer = new StreamWriter(s);
-        await writer.WriteAsync(SerializeList(head));
-        writer.Flush();
+        await SerializeList(head, writer);
     }
 
     public async Task<ListNode> Deserialize(Stream s)
     {
         var reader = new StreamReader(s);
-        var json = await reader.ReadToEndAsync();
-        return DeserializeList(json);
+        return await DeserializeList(reader);
     }
 
     public async Task<ListNode> DeepCopy(ListNode head)
     {
-        var serializedList = SerializeList(head);
-        return DeserializeList(serializedList);
+        using (var stream = new MemoryStream())
+        {
+            await Serialize(head, stream);
+            stream.Seek(0, SeekOrigin.Begin);
+            return await Deserialize(stream);
+        }
     }
 
-    private string SerializeList(ListNode head)
+    private async Task SerializeList(ListNode head, StreamWriter sw)
     {
-        var serializedNodes = new List<string>();
         var dict = new Dictionary<ListNode, SerializedNode>();
-        var cycleNode = head;
+        var current = head;
+        var index = 0;
 
-        while (cycleNode != null)
+        while (current != null)
         {
             var serializedNode = new SerializedNode()
             {
-                Id = Guid.NewGuid(),
-                Data = cycleNode.Data
+                Id = index,
+                Data = current.Data
             };
 
-            dict.Add(cycleNode, serializedNode);
-
-            cycleNode = cycleNode.Next;
+            dict.Add(current, serializedNode);
+            current = current.Next;
+            index++;
         }
 
-        cycleNode = head;
+        current = head;
 
-        while (cycleNode != null)
+        while (current != null)
         {
-            var serializedNode = dict[cycleNode];
+            var serializedNode = dict[current];
 
-            if (cycleNode.Previous != null) serializedNode.Previous = dict[cycleNode.Previous].Id;
-            if (cycleNode.Next != null) serializedNode.Next = dict[cycleNode.Next].Id;
-            if (cycleNode.Random != null) serializedNode.Random = dict[cycleNode.Random].Id;
+            if (current.Previous != null) serializedNode.Previous = dict[current.Previous].Id;
+            if (current.Next != null) serializedNode.Next = dict[current.Next].Id;
+            if (current.Random != null) serializedNode.Random = dict[current.Random].Id;
 
-            serializedNodes.Add(JsonConvert.SerializeObject(serializedNode));
-            cycleNode = cycleNode.Next;
+            await sw.WriteLineAsync(JsonConvert.SerializeObject(serializedNode));
+            current = current.Next;
         }
-
-        return "[" + string.Join(",", serializedNodes) + "]" ;
+        await sw.FlushAsync();
     }
 
-    private ListNode DeserializeList(string serializedList)
+    private async Task<ListNode> DeserializeList(StreamReader streamReader)
     {
-        if (serializedList == "[]")
-            throw new ArgumentException("Serialized list cannot be null or empty.");
-
-        var resultList = new List<SerializedNode>();
-        var nodeMap = new Dictionary<Guid, ListNode>();
-
+        string? line;
+        var deserializeList = new List<SerializedNode>();
+        var nodeMap = new Dictionary<int, ListNode>();
         try
         {
-            resultList = JsonConvert.DeserializeObject<List<SerializedNode>>(serializedList);
+            while ((line = await streamReader.ReadLineAsync()) != null)
+            {
+                var serializedNode = JsonConvert.DeserializeObject<SerializedNode>(line);
+                var node = new ListNode { Data = serializedNode.Data };
+                nodeMap.Add(serializedNode.Id, node);
+                deserializeList.Add(serializedNode);
+            }
         }
         catch (Exception)
         {
             throw new ArgumentException("Invalid serialized list data format.");
         }
 
-        foreach (var serializedNode in resultList)
+        foreach (var node in deserializeList)
         {
-            var node = new ListNode { Data = serializedNode.Data };
-            nodeMap.Add(serializedNode.Id, node);
-        }
-
-        foreach (var serializedNode in resultList)
-        {
-            if (serializedNode.Previous != Guid.Empty)
+            if (node.Previous >= 0 && node.Id != node.Previous)
             {
-                nodeMap[serializedNode.Id].Previous = nodeMap[serializedNode.Previous];
+                nodeMap[node.Id].Previous = nodeMap[node.Previous];
             }
-            if (serializedNode.Next != Guid.Empty)
+            if (node.Next > 0)
             {
-                nodeMap[serializedNode.Id].Next = nodeMap[serializedNode.Next];
+                nodeMap[node.Id].Next = nodeMap[node.Next];
             }
-            if (serializedNode.Random != Guid.Empty)
+            if (node.Random >= 0)
             {
-                nodeMap[serializedNode.Id].Random = nodeMap[serializedNode.Random];
+                nodeMap[node.Id].Random = nodeMap[node.Random];
             }
         }
 
-        return resultList.Count > 0 ? nodeMap[resultList[0].Id] : null;
+        return deserializeList.Count > 0 ? nodeMap[deserializeList[0].Id] : null;
     }
 }

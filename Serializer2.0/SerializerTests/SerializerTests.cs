@@ -30,7 +30,7 @@ namespace UnitTests
         }
 
         [Fact]
-        public async Task SerializeDeserialize_EmptyList_ShouldThrowException()
+        public async Task Deserialize_StreamHasInvalidData_ShouldThrowException()
         {
             // Arrange
             var emptyList = null as ListNode;
@@ -38,7 +38,9 @@ namespace UnitTests
             using (var stream = new MemoryStream())
             {
                 // Act
-                await serializer.Serialize(emptyList, stream);
+                var writer = new StreamWriter(stream);
+                await writer.WriteLineAsync("sdfsdfdsg");
+                await writer.FlushAsync();
                 stream.Seek(0, SeekOrigin.Begin);
                 // Assert
                 await Assert.ThrowsAsync<ArgumentException>(() => serializer.Deserialize(stream));
@@ -46,7 +48,7 @@ namespace UnitTests
         }
 
         [Fact]
-        public async Task TestSerializeDeserializeSingleNode()
+        public async Task SerializeDeserialize_SingleNode()
         {
             var node = new ListNode { Data = "Node 1" };
             var serializer = new ListSerializer();
