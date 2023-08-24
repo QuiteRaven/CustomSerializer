@@ -48,6 +48,22 @@ namespace UnitTests
         }
 
         [Fact]
+        public async Task SerializeDeserialize_EmptyList_ShouldThrowException()
+        {
+            // Arrange
+            var emptyList = null as ListNode;
+            var serializer = new ListSerializer();
+            using (var stream = new MemoryStream())
+            {
+                // Act
+                await serializer.Serialize(emptyList, stream);
+                stream.Seek(0, SeekOrigin.Begin);
+                // Assert
+                Assert.Null(await serializer.Deserialize(stream));
+            }
+        }
+
+        [Fact]
         public async Task SerializeDeserialize_SingleNode()
         {
             var node = new ListNode { Data = "Node 1" };

@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using SerializerTests.Interfaces;
+using SerializerTests.Models;
 using SerializerTests.Nodes;
 
 public class ListSerializer : IListSerializer
@@ -30,7 +31,7 @@ public class ListSerializer : IListSerializer
     {
         var dict = new Dictionary<ListNode, SerializedNode>();
         var current = head;
-        var index = 0;
+        var index = 1;
 
         while (current != null)
         {
@@ -51,8 +52,6 @@ public class ListSerializer : IListSerializer
         {
             var serializedNode = dict[current];
 
-            if (current.Previous != null) serializedNode.Previous = dict[current.Previous].Id;
-            if (current.Next != null) serializedNode.Next = dict[current.Next].Id;
             if (current.Random != null) serializedNode.Random = dict[current.Random].Id;
 
             await sw.WriteLineAsync(JsonConvert.SerializeObject(serializedNode));
@@ -64,16 +63,32 @@ public class ListSerializer : IListSerializer
     private async Task<ListNode> DeserializeList(StreamReader streamReader)
     {
         string? line;
-        var deserializeList = new List<SerializedNode>();
-        var nodeMap = new Dictionary<int, ListNode>();
+        var nodeMap = new List<DeserializedData>();
+        nodeMap.Add(new DeserializedData
+        {
+            Target = null,
+            Source = null,
+        });
+
         try
         {
             while ((line = await streamReader.ReadLineAsync()) != null)
             {
                 var serializedNode = JsonConvert.DeserializeObject<SerializedNode>(line);
+
                 var node = new ListNode { Data = serializedNode.Data };
-                nodeMap.Add(serializedNode.Id, node);
-                deserializeList.Add(serializedNode);
+
+                if (nodeMap.Count > 1)
+                {
+                    node.Previous = nodeMap.Last().Target;
+                    node.Previous.Next = node;
+                }
+
+                nodeMap.Add(new DeserializedData
+                {
+                    Target = node,
+                    Source = serializedNode,
+                });
             }
         }
         catch (Exception)
@@ -81,22 +96,16 @@ public class ListSerializer : IListSerializer
             throw new ArgumentException("Invalid serialized list data format.");
         }
 
-        foreach (var node in deserializeList)
+        for (int i = 1; i < nodeMap.Count; i++)
         {
-            if (node.Previous >= 0 && node.Id != node.Previous)
+            var deNode = nodeMap[i];
+
+            if (deNode.Source.Random != 0)
             {
-                nodeMap[node.Id].Previous = nodeMap[node.Previous];
-            }
-            if (node.Next > 0)
-            {
-                nodeMap[node.Id].Next = nodeMap[node.Next];
-            }
-            if (node.Random >= 0)
-            {
-                nodeMap[node.Id].Random = nodeMap[node.Random];
+                deNode.Target.Random = nodeMap[deNode.Source.Random].Target;
             }
         }
 
-        return deserializeList.Count > 0 ? nodeMap[deserializeList[0].Id] : null;
+        return nodeMap.Count > 1 ? nodeMap[1].Target : null;
     }
 }
